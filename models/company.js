@@ -1,8 +1,8 @@
-"use strict";
+'use strict'
 
-const db = require("../db");
-const { BadRequestError, NotFoundError } = require("../expressError");
-const { sqlForPartialUpdate } = require("../helpers/sql");
+const db = require('../db')
+const { BadRequestError, NotFoundError } = require('../expressError')
+const { sqlForPartialUpdate } = require('../helpers/sql')
 
 /** Related functions for companies. */
 
@@ -18,30 +18,25 @@ class Company {
 
   static async create({ handle, name, description, numEmployees, logoUrl }) {
     const duplicateCheck = await db.query(
-          `SELECT handle
+      `SELECT handle
            FROM companies
            WHERE handle = $1`,
-        [handle]);
+      [handle]
+    )
 
     if (duplicateCheck.rows[0])
-      throw new BadRequestError(`Duplicate company: ${handle}`);
+      throw new BadRequestError(`Duplicate company: ${handle}`)
 
     const result = await db.query(
-          `INSERT INTO companies
+      `INSERT INTO companies
            (handle, name, description, num_employees, logo_url)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING handle, name, description, num_employees AS "numEmployees", logo_url AS "logoUrl"`,
-        [
-          handle,
-          name,
-          description,
-          numEmployees,
-          logoUrl,
-        ],
-    );
-    const company = result.rows[0];
+      [handle, name, description, numEmployees, logoUrl]
+    )
+    const company = result.rows[0]
 
-    return company;
+    return company
   }
 
   /** Find all companies.
@@ -51,14 +46,56 @@ class Company {
 
   static async findAll() {
     const companiesRes = await db.query(
-          `SELECT handle,
+      `SELECT handle,
                   name,
                   description,
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
            FROM companies
-           ORDER BY name`);
-    return companiesRes.rows;
+           ORDER BY name`
+    )
+    return companiesRes.rows
+  }
+
+  /** Filter companies in db by min/max number of employees or by name
+   *
+   * Returns filtered list { [{ handle, name, description, numEmployees, logoUrl }, ...] }
+   *
+   * Throws BadRequest Error if min num_employees is greater than max num_employees
+   */
+
+  static async findByFilters(minEmployees, maxEmployees, nameLike) {
+    if (
+      minEmployees &&
+      maxEmployees &&
+      parseInt(minEmployees) > parseInt(maxEmployees)
+    ) {
+      throw new BadRequestError(
+        'min employees cannot be greater than max employees'
+      )
+    }
+
+    let query = `SELECT * FROM companies WHERE 1 = 1`
+
+    const queryParams = []
+
+    if (minEmployees) {
+      queryParams.push(minEmployees)
+      query += ` AND num_employees >= $${queryParams.length}`
+    }
+
+    if (maxEmployees) {
+      queryParams.push(maxEmployees)
+      query += ` AND num_employees <= $${queryParams.length}`
+    }
+
+    if (nameLike) {
+      queryParams.push(`%${nameLike.toLowerCase()}%`)
+      query += ` AND LOWER(name) LIKE $${queryParams.length}`
+    }
+
+    const result = await db.query(query, queryParams)
+    return result.rows
   }
 
   /** Given a company handle, return data about company.
@@ -71,20 +108,21 @@ class Company {
 
   static async get(handle) {
     const companyRes = await db.query(
-          `SELECT handle,
+      `SELECT handle,
                   name,
                   description,
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
            FROM companies
            WHERE handle = $1`,
-        [handle]);
+      [handle]
+    )
 
-    const company = companyRes.rows[0];
+    const company = companyRes.rows[0]
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    if (!company) throw new NotFoundError(`No company: ${handle}`)
 
-    return company;
+    return company
   }
 
   /** Update company data with `data`.
@@ -100,13 +138,11 @@ class Company {
    */
 
   static async update(handle, data) {
-    const { setCols, values } = sqlForPartialUpdate(
-        data,
-        {
-          numEmployees: "num_employees",
-          logoUrl: "logo_url",
-        });
-    const handleVarIdx = "$" + (values.length + 1);
+    const { setCols, values } = sqlForPartialUpdate(data, {
+      numEmployees: 'num_employees',
+      logoUrl: 'logo_url',
+    })
+    const handleVarIdx = '$' + (values.length + 1)
 
     const querySql = `UPDATE companies 
                       SET ${setCols} 
@@ -115,13 +151,13 @@ class Company {
                                 name, 
                                 description, 
                                 num_employees AS "numEmployees", 
-                                logo_url AS "logoUrl"`;
-    const result = await db.query(querySql, [...values, handle]);
-    const company = result.rows[0];
+                                logo_url AS "logoUrl"`
+    const result = await db.query(querySql, [...values, handle])
+    const company = result.rows[0]
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    if (!company) throw new NotFoundError(`No company: ${handle}`)
 
-    return company;
+    return company
   }
 
   /** Delete given company from database; returns undefined.
@@ -131,16 +167,16 @@ class Company {
 
   static async remove(handle) {
     const result = await db.query(
-          `DELETE
+      `DELETE
            FROM companies
            WHERE handle = $1
            RETURNING handle`,
-        [handle]);
-    const company = result.rows[0];
+      [handle]
+    )
+    const company = result.rows[0]
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    if (!company) throw new NotFoundError(`No company: ${handle}`)
   }
 }
 
-
-module.exports = Company;
+module.exports = Company
