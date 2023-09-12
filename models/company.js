@@ -57,11 +57,16 @@ class Company {
     return companiesRes.rows
   }
 
-  /** Filter companies in db by min/max number of employees or by name
+  /**
+   * Finds and retrieves a list of companies from the database based on optional filtering criteria.
    *
-   * Returns filtered list { [{ handle, name, description, numEmployees, logoUrl }, ...] }
+   * @param {number|null} minEmployees - The minimum number of employees a company should have (optional).
+   * @param {number|null} maxEmployees - The maximum number of employees a company should have (optional).
+   * @param {string|null} nameLike - A case-insensitive partial match for company names (optional).
    *
-   * Throws BadRequest Error if min num_employees is greater than max num_employees
+   * @throws {BadRequestError} If `minEmployees` is greater than `maxEmployees`.
+   *
+   * @returns {Array} An array of company objects that match the specified criteria.
    */
 
   static async findByFilters(minEmployees, maxEmployees, nameLike) {
